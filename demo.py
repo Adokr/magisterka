@@ -58,16 +58,15 @@ def get_subtrees(sentence, governors_ids):
         subtrees.append(subtree)
     return subtrees 
 
-def visualize(sentence, ids):
-    result = ""
+def visualize(sentence, ids, unit_count):
+    result = f"Unit {unit_count}:"
     for el in sorted(ids):
         postag = sentence[0].tokens[el-1].upostag
         head = sentence[0].tokens[el-1].head
-        if  postag != "AUX":
+        if  postag not in ["AUX", "PUNCT", "SCONJ"]:
                 result += " "
         if  postag not in ["PUNCT", "SCONJ"]:
             result += sentence[0].tokens[el-1].text
-            
     return result.strip()
 
 #print(visualize(sentence, get_dependencies(sentence, 1, [5])))
@@ -77,9 +76,9 @@ def visualize(sentence, ids):
 govs = sorted(find_governors(sentence))
 #print(govs)
 print("##########")
-for gov in govs:
+for i, gov in enumerate(govs):
     #print(get_dependencies(sentence, gov, govs))
-    print(visualize(sentence, get_dependencies(sentence, gov, govs)))
+    print(visualize(sentence, get_dependencies(sentence, gov, govs), i+1))
 
 #print(get_subtrees(sentence, find_governors(sentence)))
 
