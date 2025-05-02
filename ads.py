@@ -43,10 +43,10 @@ def get_dependencies(tokens, root_id, stop_token_id):
                 dependents.append(token.idx)
                 if token.idx in heads and token.upostag in ["VERB", "NOUN"]:
                     dependents.extend(get_dependencies(tokens, token.idx, []))
-            elif not (token.deprel == "cc" or tokens[i+1].deprel =="advmod"):
-                dependents.append(token.idx)
-            else:
-                skip_next = True
+            elif token.deprel == "cc":
+                if tokens[i+1].deprel =="advmod":
+                    skip_next = True
+    print(set(dependents))
     return set(dependents)        
 
 def get_subtrees(sentence, governors_ids):
