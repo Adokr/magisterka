@@ -69,7 +69,6 @@ mpmath==1.3.0
 multidict==6.4.3
 murmurhash==1.0.12
 narwhals==1.37.1
-neat==0.4.1
 neat-python==0.92
 networkx==3.2.1
 nltk==3.8.1
