@@ -1,7 +1,5 @@
 import streamlit as st
-import spacy
 from spacy_streamlit import visualize_spans
-from combo.predict import COMBO
 import demo
 
 st.text_input("Enter a sentence for segmentation", key="sentence")
