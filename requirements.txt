@@ -133,7 +133,7 @@ threadpoolctl==3.5.0
 tokenizers==0.13.3
 toml==0.10.2
 tomli==2.2.1
-torch==2.0.1
+torch
 torchdata==0.6.1
 torchmetrics==1.7.1
 torchtext==0.15.2
