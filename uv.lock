@@ -19,8 +19,7 @@ charset-normalizer==3.3.2
 click==8.1.7
 cloudpathlib==0.21.0
 colorama==0.4.6
-#combo @ git+https://gitlab.clarin-pl.eu/syntactic-tools/combo.git
-combo-nlp
+combo @ git+https://gitlab.clarin-pl.eu/syntactic-tools/combo.git
 confection==0.1.5
 conllu==4.4.3
 conllutils==1.1.4
