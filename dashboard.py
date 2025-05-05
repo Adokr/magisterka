@@ -12,6 +12,7 @@ if __name__ == "__main__":
     st.title("Automatic Discourse Segmentation")
     user_input = st.text_area("Enter a sentence to segment", height=150)
 
+    print(user_input)
     if user_input.strip():
         docs, options = demo.run_segmentation(user_input, combo, nlp_blank)
 
