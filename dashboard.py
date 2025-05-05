@@ -15,8 +15,9 @@ if __name__ == "__main__":
         st.session_state.text_history = []
 
     user_input = st.text_area("Enter a sentence to segment", key="text_input", height=100)
-
+    print("ugh")
     if st.button("Segment text"):
+        print("wtf")
         if user_input.strip():
             docs, options = demo.run_segmentation(user_input, combo, nlp_blank)
             st.session_state.text_history.extend(docs)
