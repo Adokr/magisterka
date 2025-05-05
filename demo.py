@@ -1,5 +1,7 @@
 import spacy
 import ads
+import sys
+import re
 from combo.predict import COMBO
 from spacy import displacy
 from spacy.tokens import Doc
@@ -27,7 +29,6 @@ def prepare_multiple_sentences(text, nlp_blank):
         tokens = sentence.tokens
         words = [token.text for token in tokens]
         spans = ads.remove_punct(tokens, ads.find_spans(tokens))
-        #print(f"SPAN: {spans}")
         doc = Doc(nlp_blank.vocab, words=words)
         doc.spans["sc"] = [Span(doc, min(span), max(span)+1, f"{i+1}. człon") for i, span in enumerate(spans)]
         docs.append(doc)
@@ -36,19 +37,22 @@ def prepare_multiple_sentences(text, nlp_blank):
 def run_segmentation(text):
     combo = COMBO.from_pretrained("polish-herbert-base-ud213")
     nlp_blank = spacy.blank("pl")
-
-    #text = (f"Deszcz padał, więc wróciłem do domu i postanowiłem zjeść placki. Wieczorem obejrzałem super film i poszedłem spać na komputerze. Lubię zbierać grzyby."
-    #        f"Deszcz padał, więc wróciłem do domu, a potem zjadłem placki. Wieczorem obejrzałem super film i poszedłem spać na komputerze. Lubię zbierać grzyby, a czasami także klocki lego.")
-    prediction = combo(text)
-
+    
     options = {"colors": {key: value for key, value 
                     in zip([f"{i+1}. człon" for i in range(MAX_UNITS)], COLORS_NAMES)}}
-
+    
+    prediction = combo(text)
     docs = prepare_multiple_sentences(prediction, nlp_blank)
     if len(docs) == 1:
         docs = docs[0]
     return docs, options
 
-#docs, options = run_segmentation('SSs')
+def get_text(file):
+    with open(file, "r", encoding='utf-8') as f:
+        text = f.read()
+    return text
 
-#displacy.serve(docs, style="span", options=options)
+if __name__ == "__main__":
+
+    docs, options = run_segmentation(get_text(sys.argv[1]))
+    displacy.serve(docs, style="span", options=options)

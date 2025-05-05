@@ -18,7 +18,7 @@ def find_governors(tokens):
     for token in tokens:
         if token.head in governors_ids and token.deprel in TAGS:
             governors_ids.append(token.idx)
-    print(f"IDS {governors_ids}")
+    #print(f"IDS {governors_ids}")
     return governors_ids
 
 
@@ -44,7 +44,7 @@ def get_dependencies(tokens, root_id, stop_token_id):
             elif token.deprel == "cc":
                 if tokens[i+1].deprel =="advmod":
                     skip_next = True
-    print(set(dependents))
+    #print(set(dependents))
     return set(dependents)        
 
 def get_subtrees(sentence, governors_ids):
@@ -85,7 +85,7 @@ def find_spans(tokens):
     for token in tokens:
         if token.head in governors_ids and token.deprel in TAGS:
             governors_ids.append(token.idx)
-    print(f"GOVS: {governors_ids}")
+    #print(f"GOVS: {governors_ids}")
     for gov in sorted(governors_ids):
         spans.append(get_dependencies(tokens, gov, governors_ids))
     
