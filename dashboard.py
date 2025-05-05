@@ -10,17 +10,23 @@ if __name__ == "__main__":
     nlp_blank = spacy.blank("pl")
 
     st.title("Automatic Discourse Segmentation")
-    user_input = st.text_area("Enter a sentence to segment", height=150)
 
-    print(user_input)
-    if user_input.strip():
-        docs, options = demo.run_segmentation(user_input, combo, nlp_blank)
+    if "text_history" not in st.session_state:
+        st.session_state.text_history = []
 
-        for doc in docs:
-            visualize_spans(doc, spans_key="sc", displacy_options=options)
+    user_input = st.text_area("Enter a sentence to segment", key="text_input", height=100)
 
-        #st.text_input("Enter another sentence for segmentation", key="sentence1")
+    if st.button("Segment text"):
+        if user_input.strip():
+            docs, options = demo.run_segmentation(user_input, combo, nlp_blank)
+            st.session_state.text_history.extend(docs)
+            st.session_state.text_input = ""
 
-        #docs, options = demo.run_segmentation(st.session_state.sentence1)
+    for doc in st.session_state.text_history:
+        visualize_spans(doc, spans_key="sc", displacy_options=options)
 
-        #visualize_spans(docs, spans_key="sc", displacy_options=options)
+            #st.text_input("Enter another sentence for segmentation", key="sentence1")
+
+            #docs, options = demo.run_segmentation(st.session_state.sentence1)
+
+            #visualize_spans(docs, spans_key="sc", displacy_options=options)
