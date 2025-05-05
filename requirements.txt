@@ -19,7 +19,7 @@ charset-normalizer==3.3.2
 click==8.1.7
 cloudpathlib==0.21.0
 colorama==0.4.6
-lambo @ git+https://gitlab.clarin-pl.eu/syntactic-tools/lambo.git
+lambo @ git+https://github.com/Adokr/lambo.git
 combo @ git+https://gitlab.clarin-pl.eu/syntactic-tools/combo.git
 confection==0.1.5
 conllu==4.4.3
