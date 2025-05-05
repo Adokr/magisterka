@@ -1,7 +1,6 @@
 import spacy
 import ads
 import sys
-import re
 from combo.predict import COMBO
 from spacy import displacy
 from spacy.tokens import Doc
@@ -34,15 +33,12 @@ def prepare_multiple_sentences(text, nlp_blank):
         docs.append(doc)
     return docs
 
-def run_segmentation(text):
-    combo = COMBO.from_pretrained("polish-herbert-base-ud213")
-    nlp_blank = spacy.blank("pl")
-    
+def run_segmentation(text, model, nlp):
     options = {"colors": {key: value for key, value 
                     in zip([f"{i+1}. człon" for i in range(MAX_UNITS)], COLORS_NAMES)}}
     
-    prediction = combo(text)
-    docs = prepare_multiple_sentences(prediction, nlp_blank)
+    prediction = model(text)
+    docs = prepare_multiple_sentences(prediction, nlp)
     if len(docs) == 1:
         docs = docs[0]
     return docs, options
@@ -53,6 +49,7 @@ def get_text(file):
     return text
 
 if __name__ == "__main__":
-
-    docs, options = run_segmentation(get_text(sys.argv[1]))
+    combo = COMBO.from_pretrained("polish-herbert-base-ud213")
+    nlp_blank = spacy.blank("pl")
+    docs, options = run_segmentation(get_text(sys.argv[1]), combo, nlp_blank)
     displacy.serve(docs, style="span", options=options)
