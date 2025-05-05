@@ -1,6 +1,4 @@
-from combo.predict import COMBO
 #import torch
-
 #print(f"TORCH: {torch.cuda.is_available()}")
 
 TAGS = {'advcl', 'ccomp', 'csubj', 'acl', 'conj'}
