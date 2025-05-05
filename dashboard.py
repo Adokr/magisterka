@@ -14,15 +14,14 @@ if __name__ == "__main__":
     if "text_history" not in st.session_state:
         st.session_state.text_history = []
     print("ugh0")
-    user_input = st.text_area("Enter a sentence to segment", key="text_input", height=100)
+    st.text_area("Enter a sentence to segment", key="text_input", height=100)
     print("ugh")
     if st.button("Segment text"):
-        print("wtf")
+        user_input = st.session_state.text_input
         if user_input.strip():
             docs, options = demo.run_segmentation(user_input, combo, nlp_blank)
             st.session_state.text_history.extend(docs)
-            #st.session_state.text_input = ""
-            print("user_input")
+            st.session_state.text_input = ""
 
     print("before vis")
     for doc in st.session_state.text_history:
