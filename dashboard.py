@@ -20,11 +20,14 @@ if __name__ == "__main__":
         if user_input.strip():
             docs, options = demo.run_segmentation(user_input, combo, nlp_blank)
             st.session_state.text_history.extend(docs)
-            st.session_state.text_input = ""
+            #st.session_state.text_input = ""
+            print("user_input")
 
+    print("before vis")
     for doc in st.session_state.text_history:
+        print("in vis")
         visualize_spans(doc, spans_key="sc", displacy_options=options)
-
+        print("after vis")
             #st.text_input("Enter another sentence for segmentation", key="sentence1")
 
             #docs, options = demo.run_segmentation(st.session_state.sentence1)
