@@ -16,7 +16,8 @@ if __name__ == "__main__":
     if user_input.strip():
         docs, options = demo.run_segmentation(user_input, combo, nlp_blank)
 
-        visualize_spans(docs, spans_key="sc", displacy_options=options)
+        for doc in docs:
+            visualize_spans(doc, spans_key="sc", displacy_options=options)
 
         #st.text_input("Enter another sentence for segmentation", key="sentence1")
 
