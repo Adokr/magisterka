@@ -13,7 +13,7 @@ if __name__ == "__main__":
 
     if "text_history" not in st.session_state:
         st.session_state.text_history = []
-
+    print("ugh0")
     user_input = st.text_area("Enter a sentence to segment", key="text_input", height=100)
     print("ugh")
     if st.button("Segment text"):
