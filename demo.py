@@ -34,7 +34,7 @@ def prepare_multiple_sentences(text, nlp_blank):
     return docs
 
 def run_segmentation(text):
-    combo = COMBO.from_pretrained("polish-herbert-base-ud213")
+    combo = COMBO.from_pretrained("english-bert-base-ud213")
     nlp_blank = spacy.blank("pl")
 
     #text = (f"Deszcz padał, więc wróciłem do domu i postanowiłem zjeść placki. Wieczorem obejrzałem super film i poszedłem spać na komputerze. Lubię zbierać grzyby."
