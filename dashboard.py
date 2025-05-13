@@ -11,17 +11,16 @@ if __name__ == "__main__":
 
     st.title("Automatic Discourse Segmentation")
 
-    if "text_input" not in st.session_state:
-        st.session_state.text_input = ""
+    #if "text_input" not in st.session_state:
+     #   st.session_state.text_input = ""
        
     user_input = st.text_area("Enter a sentence to segment", key="text_input", height=100)
 
-    if st.button("Segment"):
-        if user_input.strip():
-            docs, options = demo.run_segmentation(user_input, combo, nlp_blank)
-            visualize_spans(docs, spans_key="sc", displacy_options=options)
+    if user_input.strip():
+        docs, options = demo.run_segmentation(user_input, combo, nlp_blank)
+        visualize_spans(docs, spans_key="sc", displacy_options=options)
 
-            st.session_state.text_input = ""
+#            st.session_state.text_input = ""
         #st.success("Analysis complete. You can enter new text above.")
             #st.text_input("Enter another sentence for segmentation", key="sentence1")
 
