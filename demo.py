@@ -24,6 +24,7 @@ def get_words(tokens):
 
 def prepare_multiple_sentences(text, nlp_blank):
     docs = []
+    allSpans = []
     for sentence in text:
         tokens = sentence.tokens
         words = [token.text for token in tokens]
@@ -31,25 +32,30 @@ def prepare_multiple_sentences(text, nlp_blank):
         doc = Doc(nlp_blank.vocab, words=words)
         doc.spans["sc"] = [Span(doc, min(span), max(span)+1, f"{i+1}. człon") for i, span in enumerate(spans)]
         docs.append(doc)
-    return docs
+        allSpans.append(spans)
+    return docs, allSpans
 
 def run_segmentation(text, model, nlp):
     options = {"colors": {key: value for key, value 
                     in zip([f"{i+1}. człon" for i in range(MAX_UNITS)], COLORS_NAMES)}}
     
     prediction = model(text)
-    docs = prepare_multiple_sentences(prediction, nlp)
+    docs, spans = prepare_multiple_sentences(prediction, nlp)
     if len(docs) == 1:
         docs = docs[0]
-    return docs, options
+    return docs, options, spans
 
 def get_text(file):
     with open(file, "r", encoding='utf-8') as f:
         text = f.read()
     return text
 
-if __name__ == "__main__":
+def main(text):
     combo = COMBO.from_pretrained("polish-herbert-base-ud213")
     nlp_blank = spacy.blank("pl")
-    docs, options = run_segmentation(get_text(sys.argv[1]), combo, nlp_blank)
-    displacy.serve(docs, style="span", options=options)
+    docs, options, spans = run_segmentation(text, combo, nlp_blank)
+    #displacy.serve(docs, style="span", options=options)
+    return docs, options, spans
+
+if __name__ == "__main__":
+    main(get_text(sys.argv[1]))
