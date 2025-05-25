@@ -2,6 +2,7 @@ import cassis
 import demo
 import os
 import spacy
+from combo.predict import COMBO
 from spacy import displacy
 from spacy.tokens import Doc, SpanGroup, Span
 
@@ -50,6 +51,8 @@ def getTrueSpans(casFile):
     return doc
 
 def main(folder):
+    combo = COMBO.from_pretrained("polish-herbert-base-ud213")
+    nlp_blank = spacy.blank("pl")
     trueSpansCount = 0
     goodPredictionCount = 0
     wholeFilePredictedCount = 0
@@ -62,8 +65,8 @@ def main(folder):
         fileCount += 1
         cas = getFile(os.path.join(dir, file))
         trueDocs = getTrueSpans(cas)
-        predictedDocs, options, predictedSpan = demo.main(cas.sofa_string)
-        displacy.serve([predictedDocs, trueDocs], style="span", options=options)
+        predictedDocs, options, predictedSpan = demo.main(cas.sofa_string, combo, nlp_blank)
+        #displacy.serve([predictedDocs, trueDocs], style="span", options=options)
         goodPredictions, diffCount, wholeFileGood = compare(predictedDocs.spans["sc"], trueDocs.spans["sc"])
         if wholeFileGood:
             wholeFilePredictedCount += 1
@@ -74,7 +77,7 @@ def main(folder):
         goodPredictionCount += goodPredictions
         trueSpansCount += len(trueDocs.spans["sc"])
 
-        if fileCount == 1:
+        if fileCount == 100:
             break
     print(f"All file predicted well: {wholeFilePredictedCount}\t"
           f"File count: {fileCount}\t"

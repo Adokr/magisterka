@@ -44,8 +44,9 @@ def prepare_multiple_sentences(text, nlp_blank):
 
     words = [token.text for token in tokens]
     spans = ads.remove_punct(tokens, ads.find_spans(tokens))
+    #print(spans)
     doc = Doc(nlp_blank.vocab, words=words)
-    doc.spans["sc"] = [Span(doc, min(span), max(span)+1, f"{i+1}. człon") for i, span in enumerate(spans)]
+    doc.spans["sc"] = [Span(doc, min(span), max(span)+1, f"{i+1}. człon") for i, span in enumerate(spans) if span != []]
     return doc, allSpans
 
 def run_segmentation(text, model, nlp):
@@ -63,10 +64,8 @@ def get_text(file):
         text = f.read()
     return text
 
-def main(text):
-    combo = COMBO.from_pretrained("polish-herbert-base-ud213")
-    nlp_blank = spacy.blank("pl")
-    docs, options, spans = run_segmentation(text, combo, nlp_blank)
+def main(text, model, nlp):
+    docs, options, spans = run_segmentation(text, model, nlp)
     #displacy.serve(docs, style="span", options=options)
     return docs, options, spans
 
