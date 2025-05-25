@@ -1,51 +1,94 @@
 import cassis
 import demo
+import os
 import spacy
 from spacy import displacy
 from spacy.tokens import Doc, SpanGroup, Span
 
 
-def charSpanToTokenSpan(charSpans, doc):
-    return None
+def compare(predictedSpans, trueSpans):
+    countSameSpans = 0
+    spansCountDiff = len(predictedSpans) - len(trueSpans)
 
-if __name__ == "__main__":
+    textTrueSpans = [item.orth_ for item in trueSpans]
+    for span in predictedSpans:
+        if span.orth_ in textTrueSpans:
+            countSameSpans += 1
+
+    return countSameSpans, spansCountDiff, len(trueSpans) == countSameSpans
+
+def getFile(filePath):
     with open("data/TypeSystem.xml", "rb") as f:
         typesystem = cassis.load_typesystem(f)
 
-    with open("data/XMI_train/train/206.xmi", "rb") as g:
+    with open(filePath, "rb") as g:#"data/XMI_train/train/206.xmi"
         cas = cassis.load_cas_from_xmi(g, typesystem)
-
-    print(f"###############\n{cas.sofa_string}\n##########")
-    start = cas.select("DocumentMetaData")[0].get("begin")
-    end = cas.select("DocumentMetaData")[0].get("end")
-
-    #annotatedSpans = []
-    thisSentenceSpans = []
-
-    for discourseSpan in cas.select("DiscourseSpans"):
-        span = [discourseSpan.get("begin"), discourseSpan.get("end")]
-        if discourseSpan.get("end") <= end and span not in thisSentenceSpans:
-            thisSentenceSpans.append(span)
-    #annotatedSpans.append(thisSentenceSpans)
-    print(f"SPANS: {thisSentenceSpans}")
     
+    return cas
+
+def getTrueSpans(casFile):
     nlp_blank = spacy.blank("pl")
-    
-    words = [word for word in cas.sofa_string.split(" ")]
-    #print(words)
+    words = [word for word in casFile.sofa_string.split(" ")]
     doc = Doc(nlp_blank.vocab, words=words)
+    #start = casFile.select("DocumentMetaData")[0].get("begin")
+    end = casFile.select("DocumentMetaData")[0].get("end")
+    trueSpans = []
+    trueSpansInChars = []
 
-    spans = []
+    for discourseSpan in casFile.select("DiscourseSpans"):
+        span = [discourseSpan.get("begin"), discourseSpan.get("end")]
+        if discourseSpan.get("end") <= end and span not in trueSpansInChars:
+            trueSpansInChars.append(span)
     
-    for i, span in enumerate(thisSentenceSpans):
+    for i, span in enumerate(trueSpansInChars):
         #print(f"start: {span[0]}")
         #print(f"end: {span[1]}")
-        spans.append(doc.char_span(span[0], span[1], f"{i+1}. człon"))
-    doc.spans["sc"] = SpanGroup(doc, name="sc", spans=spans)
-
-    #print(f"DOCS: {lol}")
-    docs, options, predictedSpan = demo.main(cas.sofa_string)
+        trueSpans.append(doc.char_span(span[0], span[1], f"{i+1}. człon"))
     
-    #displacy.serve(docs, style="span", options=options)
-    displacy.serve([docs, doc], style="span", options=options)
-    print(predictedSpan)
+    doc.spans["sc"] = SpanGroup(doc, name="sc", spans=trueSpans)
+
+    return doc
+
+def main(folder):
+    trueSpansCount = 0
+    goodPredictionCount = 0
+    wholeFilePredictedCount = 0
+    tooManySpans = 0
+    tooFewSpans = 0
+    fileCount = 0
+    dir = os.fsencode(folder)
+    for file in os.listdir(dir):
+        print(file)
+        fileCount += 1
+        cas = getFile(os.path.join(dir, file))
+        trueDocs = getTrueSpans(cas)
+        predictedDocs, options, predictedSpan = demo.main(cas.sofa_string)
+        displacy.serve([predictedDocs, trueDocs], style="span", options=options)
+        goodPredictions, diffCount, wholeFileGood = compare(predictedDocs.spans["sc"], trueDocs.spans["sc"])
+        if wholeFileGood:
+            wholeFilePredictedCount += 1
+        elif diffCount < 0:
+            tooFewSpans += 1
+        elif diffCount > 0:
+            tooManySpans += 1
+        goodPredictionCount += goodPredictions
+        trueSpansCount += len(trueDocs.spans["sc"])
+
+        if fileCount == 1:
+            break
+    print(f"All file predicted well: {wholeFilePredictedCount}\t"
+          f"File count: {fileCount}\t"
+          f"%: {wholeFilePredictedCount/fileCount}\n\n"
+          f"Well predicted spans: {goodPredictionCount}\t"
+          f"All spans: {trueSpansCount}\t"
+          f"%: {goodPredictionCount/trueSpansCount}\n\n"
+          f"Too many: {tooManySpans}\t"
+          f"Too few: {tooFewSpans}\n\n")
+
+    #displacy.serve([predictedDocs, trueDocs], style="span", options=options)
+
+
+if __name__ == "__main__":
+    main("data/XMI_dev/dev")
+    
+
