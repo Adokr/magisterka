@@ -22,29 +22,46 @@ def find_governors(tokens):
     return governors_ids
 
 
-def get_dependencies(tokens, root_id, stop_token_id):
-    dependents = [root_id]
+def get_dependencies(tokens, rootId, stopTokenIds, ugh):
+    dependents = [rootId]
     heads = set([token.head for token in tokens])
 
     skip_next = False
+
+   
+    stopTokenIds = [x for x in stopTokenIds if x > rootId]
+    startTokenIds = ugh[0: len(ugh)-len(stopTokenIds)]
+
+    print(f"STOP {stopTokenIds}")
+    print(f"STart {startTokenIds}")
+    
+    if len(startTokenIds) < 2:
+        startTokenId = 0
+    else:
+        startTokenId = startTokenIds[-2]
+
+    if stopTokenIds == []:
+        stopTokenId = 100000000
+    else:
+        stopTokenId = stopTokenIds[0]
 
     for i, token in enumerate(tokens):
         if skip_next:
             skip_next = False
             continue
         
-        if token.idx == root_id or token.idx in stop_token_id:
+        if token.idx == rootId or token.idx >= stopTokenId:
             continue
 
-        if token.head == root_id:
-            if token.upostag not in ["SCONJ", "CCONJ"]:
+        if token.head == rootId:
+            if token.upostag not in ["SCONJ", "CCONJ", "X"]:
                 dependents.append(token.idx)
-                if token.idx in heads and token.upostag in ["VERB", "NOUN"]:
-                    dependents.extend(get_dependencies(tokens, token.idx, []))
+                if token.idx in heads and token.upostag in ["VERB", "NOUN", "ADJ", "PROPN", "PRON"]:
+                    dependents.extend(get_dependencies(tokens[startTokenId-1:], token.idx, stopTokenIds, ugh))
             elif token.deprel == "cc":
                 if tokens[i+1].deprel =="advmod":
                     skip_next = True
-    #print(set(dependents))
+    
     return set(dependents)        
 
 def get_subtrees(sentence, governors_ids):
@@ -79,15 +96,15 @@ def remove_punct(tokens, spans):
 
 def find_spans(tokens):
     spans = []
+    
     governors_ids = [token.idx for token in tokens if token.deprel=='root']
     assert len(governors_ids) != 0, "no root found"
-
     for token in tokens:
         if token.head in governors_ids and token.deprel in TAGS:
             governors_ids.append(token.idx)
-    #print(f"GOVS: {governors_ids}")
+    print(f"GOVS ALL: {governors_ids}")
     for gov in sorted(governors_ids):
-        spans.append(get_dependencies(tokens, gov, governors_ids))
+        spans.append(get_dependencies(tokens, gov, governors_ids, governors_ids))
     
     return spans
     #print("##########")

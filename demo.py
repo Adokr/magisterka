@@ -25,15 +25,28 @@ def get_words(tokens):
 def prepare_multiple_sentences(text, nlp_blank):
     docs = []
     allSpans = []
-    for sentence in text:
+    '''for sentence in text:
         tokens = sentence.tokens
         words = [token.text for token in tokens]
         spans = ads.remove_punct(tokens, ads.find_spans(tokens))
         doc = Doc(nlp_blank.vocab, words=words)
         doc.spans["sc"] = [Span(doc, min(span), max(span)+1, f"{i+1}. człon") for i, span in enumerate(spans)]
         docs.append(doc)
-        allSpans.append(spans)
-    return docs, allSpans
+        allSpans.append(spans)'''
+    tokens=[]
+    tokenOffset = 0
+    for sentence in text:
+        for token in sentence.tokens:
+            token.idx += tokenOffset
+            token.head += tokenOffset
+        tokens += sentence.tokens
+        tokenOffset += len(sentence.tokens)
+
+    words = [token.text for token in tokens]
+    spans = ads.remove_punct(tokens, ads.find_spans(tokens))
+    doc = Doc(nlp_blank.vocab, words=words)
+    doc.spans["sc"] = [Span(doc, min(span), max(span)+1, f"{i+1}. człon") for i, span in enumerate(spans)]
+    return doc, allSpans
 
 def run_segmentation(text, model, nlp):
     options = {"colors": {key: value for key, value 
