@@ -50,6 +50,26 @@ def getTrueSpans(casFile):
 
     return doc
 
+def removeSomeSpaces(text):
+    formattedText = ""
+    spaceNext = False
+    for string in text.split():
+        if string not in {",", ".", "(", ")", "!", "?", ":", ";"}:
+            if spaceNext:
+                formattedText += " "
+            formattedText += string
+            spaceNext = True
+        elif string not in {"(", ")"}:
+            formattedText += string
+            spaceNext = True
+        elif string == "(":
+            formattedText += " " + string
+            spaceNext = False
+        else:
+            formattedText = formattedText.rstrip(" ") + string
+            spaceNext = True
+    return formattedText
+
 def main(folder):
     combo = COMBO.from_pretrained("polish-herbert-base-ud213")
     nlp_blank = spacy.blank("pl")
@@ -61,21 +81,26 @@ def main(folder):
     fileCount = 0
     dir = os.fsencode(folder)
     for file in os.listdir(dir):
-        print(file)
-        fileCount += 1
-        cas = getFile(os.path.join(dir, file))
-        trueDocs = getTrueSpans(cas)
-        predictedDocs, options, predictedSpan = demo.main(cas.sofa_string, combo, nlp_blank)
-        #displacy.serve([predictedDocs, trueDocs], style="span", options=options)
-        goodPredictions, diffCount, wholeFileGood = compare(predictedDocs.spans["sc"], trueDocs.spans["sc"])
-        if wholeFileGood:
-            wholeFilePredictedCount += 1
-        elif diffCount < 0:
-            tooFewSpans += 1
-        elif diffCount > 0:
-            tooManySpans += 1
-        goodPredictionCount += goodPredictions
-        trueSpansCount += len(trueDocs.spans["sc"])
+        if file == b"159.xmi":
+            print(file)
+            fileCount += 1
+            cas = getFile(os.path.join(dir, file))
+            trueDocs = getTrueSpans(cas)
+            predictedDocs, options, predictedSpan = demo.main(removeSomeSpaces(cas.sofa_string), combo, nlp_blank)
+            displacy.serve([predictedDocs, trueDocs], style="span", options=options)
+            goodPredictions, diffCount, wholeFileGood = compare(predictedDocs.spans["sc"], trueDocs.spans["sc"])
+            if wholeFileGood:
+                wholeFilePredictedCount += 1
+            elif diffCount < 0:
+                tooFewSpans += 1
+            elif diffCount > 0:
+                tooManySpans += 1
+            goodPredictionCount += goodPredictions
+            trueSpansCount += len(trueDocs.spans["sc"])
+
+            print( f"Well predicted spans: {goodPredictionCount}\t"
+                    f"All spans: {trueSpansCount}\t"
+                    f"%: {goodPredictionCount/trueSpansCount}\n\n")
 
         if fileCount == 100:
             break
@@ -84,7 +109,7 @@ def main(folder):
           f"%: {wholeFilePredictedCount/fileCount}\n\n"
           f"Well predicted spans: {goodPredictionCount}\t"
           f"All spans: {trueSpansCount}\t"
-          f"%: {goodPredictionCount/trueSpansCount}\n\n"
+          f"%: {round(goodPredictionCount/trueSpansCount, 3)}\n\n"
           f"Too many: {tooManySpans}\t"
           f"Too few: {tooFewSpans}\n\n")
 

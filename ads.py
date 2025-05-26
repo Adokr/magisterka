@@ -55,8 +55,8 @@ def get_dependencies(tokens, rootId, stopTokenIds, ugh):
                 dependents.append(token.idx)
                 if token.idx in heads and token.upostag in ["VERB", "NOUN", "ADJ", "PROPN", "PRON"]:
                     dependents.extend(get_dependencies(allTokens, token.idx, stopTokenIds, ugh))
-            elif token.deprel == "cc":
-                if tokens[i+1].deprel =="advmod":
+            elif token.deprel in {"cc", "advmod"}:
+                if tokens[i+1].deprel in {"cc", "advmod"}:
                     skip_next = True
     
     return set(dependents)        
@@ -86,7 +86,7 @@ def remove_punct(tokens, spans):
     for span in spans:
         new_span = []
         for el in span:
-            if tokens[el-1].upostag not in {"PUNCT", "SCONJ"}:
+            if tokens[el-1].upostag not in {"PUNCT", "SCONJ"}:#tokens[el-1].text not in {",", ".", "-"}:
                 new_span.append(el-1)
         new_spans.append(new_span)
     return new_spans

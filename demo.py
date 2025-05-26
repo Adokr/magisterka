@@ -8,10 +8,22 @@ from spacy.tokens import Span
 
 
 
-MAX_UNITS = 7
+MAX_UNITS = 60
 COLORS_NAMES = ["turquoise", " lightcoral", "mediumorchid", 
                 "sandybrown", "palegreen", "deepskyblue",
-                "hotpink"]
+                "hotpink", "teal", "peru", "fuchsia", 
+                "maroon", "seagreen", "lightsteelblue", "navajowhite",
+                "crimson", "olive", "k", "plum", "wheat", "royalblue",
+                "turquoise", " lightcoral", "mediumorchid", 
+                "sandybrown", "palegreen", "deepskyblue",
+                "hotpink", "teal", "peru", "fuchsia", 
+                "maroon", "seagreen", "lightsteelblue", "navajowhite",
+                "crimson", "olive", "k", "plum", "wheat", "royalblue",
+                "turquoise", " lightcoral", "mediumorchid", 
+                "sandybrown", "palegreen", "deepskyblue",
+                "hotpink", "teal", "peru", "fuchsia", 
+                "maroon", "seagreen", "lightsteelblue", "navajowhite",
+                "crimson", "olive", "k", "plum", "wheat", "royalblue"]
 # Download Polish model. Change cuda value to use GPU
 def get_words(tokens):
     words = []
