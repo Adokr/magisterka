@@ -73,22 +73,22 @@ def removeSomeSpaces(text):
 def main(folder):
     combo = COMBO.from_pretrained("polish-herbert-base-ud213")
     nlp_blank = spacy.blank("pl")
-    trueSpansCount = 0
+    '''trueSpansCount = 0
     goodPredictionCount = 0
     wholeFilePredictedCount = 0
     tooManySpans = 0
     tooFewSpans = 0
-    fileCount = 0
+    fileCount = 0'''
     dir = os.fsencode(folder)
     for file in os.listdir(dir):
         if file == b"159.xmi":
             print(file)
             fileCount += 1
             cas = getFile(os.path.join(dir, file))
-            trueDocs = getTrueSpans(cas)
-            predictedDocs, options, predictedSpan = demo.main(removeSomeSpaces(cas.sofa_string), combo, nlp_blank)
-            displacy.serve([predictedDocs, trueDocs], style="span", options=options)
-            goodPredictions, diffCount, wholeFileGood = compare(predictedDocs.spans["sc"], trueDocs.spans["sc"])
+            #trueDocs = getTrueSpans(cas)
+            predictedDocs, options = demo.main(removeSomeSpaces(cas.sofa_string), combo, nlp_blank)
+            displacy.serve(predictedDocs, style="span", options=options)
+            '''goodPredictions, diffCount, wholeFileGood = compare(predictedDocs.spans["sc"], trueDocs.spans["sc"])
             if wholeFileGood:
                 wholeFilePredictedCount += 1
             elif diffCount < 0:
@@ -96,14 +96,14 @@ def main(folder):
             elif diffCount > 0:
                 tooManySpans += 1
             goodPredictionCount += goodPredictions
-            trueSpansCount += len(trueDocs.spans["sc"])
-
-            print( f"Well predicted spans: {goodPredictionCount}\t"
-                    f"All spans: {trueSpansCount}\t"
-                    f"%: {goodPredictionCount/trueSpansCount}\n\n")
-
-        if fileCount == 100:
+            trueSpansCount += len(trueDocs.spans["sc"])'''
             break
+
+def statistics(goodPredictionCount, trueSpansCount, fileCount, wholeFilePredictedCount, tooManySpans, tooFewSpans):
+    print( f"Well predicted spans: {goodPredictionCount}\t"
+            f"All spans: {trueSpansCount}\t"
+            f"%: {goodPredictionCount/trueSpansCount}\n\n")
+
     print(f"All file predicted well: {wholeFilePredictedCount}\t"
           f"File count: {fileCount}\t"
           f"%: {wholeFilePredictedCount/fileCount}\n\n"

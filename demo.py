@@ -9,7 +9,8 @@ from spacy.tokens import Span
 
 
 MAX_UNITS = 60
-COLORS_NAMES = ["turquoise", " lightcoral", "mediumorchid", 
+COLORS_NAMES = 60*["navajowhite"]
+'''["turquoise", " lightcoral", "mediumorchid", 
                 "sandybrown", "palegreen", "deepskyblue",
                 "hotpink", "teal", "peru", "fuchsia", 
                 "maroon", "seagreen", "lightsteelblue", "navajowhite",
@@ -23,7 +24,7 @@ COLORS_NAMES = ["turquoise", " lightcoral", "mediumorchid",
                 "sandybrown", "palegreen", "deepskyblue",
                 "hotpink", "teal", "peru", "fuchsia", 
                 "maroon", "seagreen", "lightsteelblue", "navajowhite",
-                "crimson", "olive", "k", "plum", "wheat", "royalblue"]
+                "crimson", "olive", "k", "plum", "wheat", "royalblue"]'''
 # Download Polish model. Change cuda value to use GPU
 def get_words(tokens):
     words = []
@@ -36,7 +37,7 @@ def get_words(tokens):
 
 def prepare_multiple_sentences(text, nlp_blank):
     docs = []
-    allSpans = []
+
     '''for sentence in text:
         tokens = sentence.tokens
         words = [token.text for token in tokens]
@@ -59,17 +60,17 @@ def prepare_multiple_sentences(text, nlp_blank):
     #print(spans)
     doc = Doc(nlp_blank.vocab, words=words)
     doc.spans["sc"] = [Span(doc, min(span), max(span)+1, f"{i+1}. człon") for i, span in enumerate(spans) if span != []]
-    return doc, allSpans
+    return doc 
 
 def run_segmentation(text, model, nlp):
     options = {"colors": {key: value for key, value 
                     in zip([f"{i+1}. człon" for i in range(MAX_UNITS)], COLORS_NAMES)}}
     
     prediction = model(text)
-    docs, spans = prepare_multiple_sentences(prediction, nlp)
+    docs = prepare_multiple_sentences(prediction, nlp)
     if len(docs) == 1:
         docs = docs[0]
-    return docs, options, spans
+    return docs, options
 
 def get_text(file):
     with open(file, "r", encoding='utf-8') as f:
@@ -77,9 +78,9 @@ def get_text(file):
     return text
 
 def main(text, model, nlp):
-    docs, options, spans = run_segmentation(text, model, nlp)
+    docs, options = run_segmentation(text, model, nlp)
     #displacy.serve(docs, style="span", options=options)
-    return docs, options, spans
+    return docs, options
 
 if __name__ == "__main__":
     main(get_text(sys.argv[1]))
