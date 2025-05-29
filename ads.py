@@ -181,15 +181,6 @@ def getSpans(graph, spanHeads):
         else:
             proper.append(spans[i])
         textSpans.append(" ".join([graph.nodes[nodeID]['token'].text for nodeID in graph.nodes if (nodeID in sorted(proper[i]) and graph.nodes[nodeID]['token'].deprel not in {"mark", "punct"})]))
-    #print(f"spans {proper}")
-    '''span = [head]
-        for successor in graph.successors(head):
-            if successor not in spanHeads:
-                span.append(successor)
-        '''
-        
-    #spanText = " ".join([graph.nodes[nodeID]['token'].text for nodeID in graph.nodes if (nodeID in sorted(allSpans[i]) and graph.nodes[nodeID]['token'].deprel not in {"mark", "punct"})])
-    #textSpans.append(spanText)
     return textSpans
 
 def main():
