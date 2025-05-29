@@ -3,8 +3,27 @@ from combo.predict import COMBO
 import spacy
 import matplotlib.pyplot as plt
 
-TAGS = {'advcl', 'ccomp', 'csubj', 'parataxis:insert', 'parataxis:obj', 'acl:relcl', 'root'}
-VERB_TAGS = {'conj'}
+TAGS = {'advcl', 'ccomp', 'csubj', 'parataxis:insert', 'parataxis:obj', 'acl:relcl', 'root'} # ccomp
+VERB_TAGS = {'conj', 'acl:relcl'}
+
+def find_governors_from_graph(graph, subroot):
+    if subroot == None:
+        root = [nodeID for nodeID in graph.nodes if graph.nodes[nodeID]['token'].deprel == 'root'][0]
+        governors = [root]
+    else:
+        root = subroot
+        governors = []
+
+    for successor in graph.successors(root):
+        token = graph.nodes[successor]['token']
+        if token.deprel in TAGS:
+            governors.append(token.idx)
+        elif token.upostag == "VERB" and token.deprel in VERB_TAGS:
+            governors.append(token.idx)
+        elif token.upostag == "ADJ" and token.deprel in VERB_TAGS and graph.nodes[root]['token'].upostag != "ADJ":
+            governors.append(token.idx)
+        governors.extend(find_governors_from_graph(graph, successor))
+    return governors
 
 def find_governors(tokens, needRoot, tokensUnchanged):
     if needRoot:
@@ -124,6 +143,55 @@ def find_spans(tokens):
     #for i, gov in enumerate(sorted(governors_ids)):
     #    print(visualize(tokens, get_dependencies(tokens, gov, governors_ids), i+1))
 
+def sentence_to_graph(sentence):
+    G = nx.DiGraph()
+    for token in sentence.tokens:
+        G.add_node(token.idx, token=token)   
+
+    for token in sentence.tokens:
+        if token.head != 0:
+            G.add_edge(token.head, token.idx, label=token.deprel)
+    
+    #for node in G.nodes:
+      #  print(f"NODES: {node}")
+
+    return G
+
+def getSubtree(graph, head):
+    dependents = [head]
+        
+
+    return None
+
+def getSpans(graph, spanHeads):
+    spans = []
+    proper = []
+    textSpans = []
+    for head in spanHeads:
+        span = nx.descendants(graph, head)
+        span.add(head) 
+        spans.append(span)
+    spans = sorted(spans, key=len, reverse=True)
+
+    for i in range(len(spans)):
+        if i < len(spans) -1:
+            proper.append(spans[i]-spans[i+1])
+        elif proper != []:
+            proper.append(spans[i] - proper[0])
+        else:
+            proper.append(spans[i])
+        textSpans.append(" ".join([graph.nodes[nodeID]['token'].text for nodeID in graph.nodes if (nodeID in sorted(proper[i]) and graph.nodes[nodeID]['token'].deprel not in {"mark", "punct"})]))
+    #print(f"spans {proper}")
+    '''span = [head]
+        for successor in graph.successors(head):
+            if successor not in spanHeads:
+                span.append(successor)
+        '''
+        
+    #spanText = " ".join([graph.nodes[nodeID]['token'].text for nodeID in graph.nodes if (nodeID in sorted(allSpans[i]) and graph.nodes[nodeID]['token'].deprel not in {"mark", "punct"})])
+    #textSpans.append(spanText)
+    return textSpans
+
 def main():
     with open("tekst.txt", "r", encoding='utf-8') as f: #usunąłem kropki przy skrótach al. i ul., oraz usunąłem spację przed jednym z wielokropków
         text = f.read()
@@ -133,22 +201,23 @@ def main():
 
     parsedText = combo(text)
     dependencyTrees = []
-    for sentence in parsedText[12:13]:
-        graph = nx.DiGraph()
-        graph.add_nodes_from([(token.idx, token.text) for token in sentence.tokens])
-        graph.add_edges_from([((sentence.tokens[token.head-1].idx, sentence.tokens[token.head-1].text), (token.idx, token.text)) for token in sentence.tokens])
-        graph.remove_edge((sentence.tokens[-1].idx, sentence.tokens[-1].text), (sentence.tokens[sentence.tokens[-1].head-1].idx, sentence.tokens[sentence.tokens[-1].head-1].text))
+    for i, sentence in enumerate(parsedText):
+        graph = sentence_to_graph(sentence)
         dependencyTrees.append(graph)
-        
-        govs = find_governors(sentence.tokens, True, sentence.tokens)
+        governors = sorted(find_governors_from_graph(graph, None))
+        #print(governors)
+        print([(item, graph.nodes[item]['token'].text) for item in governors])
+        print(f"zdanie {i}: {getSpans(graph, governors)}")
+
+        '''govs = find_governors(sentence.tokens, True, sentence.tokens)
         print([(gov, sentence.tokens[gov-1].text) for gov in govs])
         better = set([ids for ids in govs if sentence.tokens[ids-1].deprel in TAGS or sentence.tokens[ids-1].deprel in VERB_TAGS])
-        print([(gov, sentence.tokens[gov-1].text) for gov in better])
+        print([(gov, sentence.tokens[gov-1].text) for gov in better])'''
     
 
         #nx.draw_networkx(graph,#.subgraph([1, 2, 3, 4, 5]),
-              #           with_labels=True, node_color='lightblue', edge_color='gray', arrows=True)
-                         #labels={token.idx:token.text for token in sentence.tokens})
+          #               with_labels=True, node_color='lightblue', edge_color='gray', arrows=True,
+         #                labels={token.idx:token.text for token in sentence.tokens})
         #plt.show()
         
 
