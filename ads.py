@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 
 TAGS = {'advcl', 'ccomp', 'csubj', 'parataxis:insert', 'parataxis:obj', 'acl:relcl', 'root'} # ccomp
 VERB_TAGS = {'conj', 'acl:relcl'}
+PUNCT_TAGS =  {",", ".", ";", ":", "-", '"'}
 MAX_UNITS = 60
 COLORS_NAMES = ["turquoise", " lightcoral", "mediumorchid", 
                 "sandybrown", "palegreen", "deepskyblue",
@@ -182,25 +183,29 @@ def getSubtree(graph, head):
 
 def getSpans(graph, spanHeads):
     spans = []
-    proper = []
     textSpans = []
     for head in spanHeads:
         span = nx.descendants(graph, head)
         span.add(head)
-        span = {nodeID for nodeID in graph.nodes if (nodeID in span and graph.nodes[nodeID]['token'].text not in {",", ".", ";", ":", "-"})}
+        span = {nodeID for nodeID in graph.nodes if (nodeID in span)}# and graph.nodes[nodeID]['token'].deprel not in {"mark", "punct", "cc"})}
         spans.append(span)
     spans = sorted(spans, key=len, reverse=True)
+    proper = []
 
     for i in range(len(spans)):
-        if i < len(spans) -1:
+        span = spans[i]
+        for j in range(i+1, len(spans)):
+            span -= spans[j]
+        '''if i < len(spans)-1:
             span = spans[i]-spans[i+1]
         elif proper != []:
             span = spans[i] - proper[0]
         elif spans[i] != []: #czy to działa?
-            span = spans[i]
+            span = spans[i]'''
+       # print(f"\nI : {i},\t {span}\n")
         if span:
             proper.append(span)
-
+    #print(f"PROPER {proper}")
     proper = sorted(proper, key=min)
     for span in proper:
         textSpans.append(" ".join([graph.nodes[nodeID]['token'].text for nodeID in graph.nodes if nodeID in span]))
@@ -208,6 +213,13 @@ def getSpans(graph, spanHeads):
 
 def check_continuity(my_list):
     return all(a+1==b for a, b in zip(my_list, my_list[1:]))
+
+def removeSingleTokens(my_list):
+    new_list = []
+    for el in my_list:
+        if not(el+1 not in my_list and el-1 not in my_list):
+            new_list.append(el)
+    return new_list
 
 def findSplit(my_list):
     splits = []
@@ -231,31 +243,61 @@ def main():
         graph = sentence_to_graph(sentence)
         dependencyTrees.append(graph)
         governors = sorted(find_governors_from_graph(graph, None))
-        #print(governors)
-        #print([(item, graph.nodes[item]['token'].text) for item in governors])
-        #print(f"zdanie {i}: {getSpans(graph, governors)}")
         textSpans, tokenSpans = getSpans(graph, governors)
-        print(f"SPANS {textSpans}\n{tokenSpans}")
 
         words = [token.text for token in sentence.tokens]
         doc = Doc(nlp_blank.vocab, words=words)
         doc.spans["sc"] = []
-        for i, span in enumerate(tokenSpans):
+        print(f"tokenSpans {tokenSpans}")
+        for j, span in enumerate(tokenSpans):
             if check_continuity(list(span)):
-                print("weszłem")
+                span = {nodeID for nodeID in span if graph.nodes[nodeID]['token'].deprel not in {"mark", "cc"} and graph.nodes[nodeID]['token'].text not in PUNCT_TAGS}
+                print(f"span {span}")
+                doc.spans["sc"].append(Span(doc, min(span)-1, max(span), f"{j+1}. człon"))
+            else:
+                span = removeSingleTokens(list(span))
+                print(f"discontinuous {span}")
+                if check_continuity(list(span)):
+                    span = {nodeID for nodeID in span if graph.nodes[nodeID]['token'].deprel  not in {"mark", "cc"} and graph.nodes[nodeID]['token'].text not in PUNCT_TAGS}
+
+                    doc.spans["sc"].append(Span(doc, min(span)-1, max(span), f"{j+1}. człon"))
+                else:
+                    span = {nodeID for nodeID in span if graph.nodes[nodeID]['token'].deprel  not in {"mark", "cc"}  and graph.nodes[nodeID]['token'].text not in PUNCT_TAGS}
+
+                    splits = findSplit(list(span))
+                    print(f"split {splits}")
+                    if splits != []:
+                        for split in splits:
+                            doc.spans["sc"].append(Span(doc, min(span)-1, split[0], f"{j+1}. człon"))
+                            doc.spans["sc"].append(Span(doc, split[1]-1, max(span), f"{j+1}. człon"))
+                    else:
+                        doc.spans["sc"].append(Span(doc, min(span)-1, max(span), f"{j+1}. człon"))
+        '''for i, span in enumerate(tokenSpans):
+            if check_continuity(list(span)):
+                span = {nodeID for nodeID in span if graph.nodes[nodeID]['token'].deprel not in {"mark", "punct"}}
+                span = removeSingleTokens(list(span))
+                print(f"span1 {span}")
                 doc.spans["sc"].append(Span(doc, min(span)-1, max(span), f"{i+1}. człon"))
             else:
+                span = removeSingleTokens(list(span))
                 splits = findSplit(list(span))
-                for split in splits:
-                    if split[1]-split[0] > 2 and not skip:
-                        doc.spans["sc"].append(Span(doc, min(span)-1, split[0], f"{i+1}. człon"))
-                        doc.spans["sc"].append(Span(doc, split[1]-1, max(span), f"{i+1}. człon"))
-                    else:
-                        doc.spans["sc"].append(Span(doc, min(span)-1, max(span), f"{i+1}. człon"))
-                        skip = True
-        print(f"DOC {doc}")
+                
+                print(f"span2 {span}")
+                if splits != []:
+                    for split in splits:
+                        if split[1]-split[0] > 2:
+                            doc.spans["sc"].append(Span(doc, min(span)-1, split[0], f"{i+1}. człon"))
+                            doc.spans["sc"].append(Span(doc, split[1]-1, max(span), f"{i+1}. człon"))
+                        else:
+                            newSpan = Span(doc, min(span)-1, max(span), f"{i+1}. człon")
+                            if newSpan not in doc.spans["sc"]:
+                                doc.spans["sc"].append(newSpan)
+                else:
+                     doc.spans["sc"].append(Span(doc, min(span)-1, max(span), f"{i+1}. człon"))'''
+
+        print(f"DOC {doc.spans['sc']}\n")
         docs.append(doc)
-        print(f"DOCS {docs}")
+       # print(f"DOCS {docs}")
     
     options = {"colors": {key: value for key, value 
                     in zip([f"{i+1}. człon" for i in range(MAX_UNITS)], COLORS_NAMES)}}
