@@ -1,10 +1,27 @@
 import networkx as nx
 from combo.predict import COMBO
 import spacy
+from spacy.tokens import Doc, Span
 import matplotlib.pyplot as plt
 
 TAGS = {'advcl', 'ccomp', 'csubj', 'parataxis:insert', 'parataxis:obj', 'acl:relcl', 'root'} # ccomp
 VERB_TAGS = {'conj', 'acl:relcl'}
+MAX_UNITS = 60
+COLORS_NAMES = ["turquoise", " lightcoral", "mediumorchid", 
+                "sandybrown", "palegreen", "deepskyblue",
+                "hotpink", "teal", "peru", "fuchsia", 
+                "maroon", "seagreen", "lightsteelblue", "navajowhite",
+                "crimson", "olive", "k", "plum", "wheat", "royalblue",
+                "turquoise", " lightcoral", "mediumorchid", 
+                "sandybrown", "palegreen", "deepskyblue",
+                "hotpink", "teal", "peru", "fuchsia", 
+                "maroon", "seagreen", "lightsteelblue", "navajowhite",
+                "crimson", "olive", "k", "plum", "wheat", "royalblue",
+                "turquoise", " lightcoral", "mediumorchid", 
+                "sandybrown", "palegreen", "deepskyblue",
+                "hotpink", "teal", "peru", "fuchsia", 
+                "maroon", "seagreen", "lightsteelblue", "navajowhite",
+                "crimson", "olive", "k", "plum", "wheat", "royalblue"]
 
 def find_governors_from_graph(graph, subroot):
     if subroot == None:
@@ -169,19 +186,36 @@ def getSpans(graph, spanHeads):
     textSpans = []
     for head in spanHeads:
         span = nx.descendants(graph, head)
-        span.add(head) 
+        span.add(head)
+        span = {nodeID for nodeID in graph.nodes if (nodeID in span and graph.nodes[nodeID]['token'].text not in {",", ".", ";", ":", "-"})}
         spans.append(span)
     spans = sorted(spans, key=len, reverse=True)
 
     for i in range(len(spans)):
         if i < len(spans) -1:
-            proper.append(spans[i]-spans[i+1])
+            span = spans[i]-spans[i+1]
         elif proper != []:
-            proper.append(spans[i] - proper[0])
-        else:
-            proper.append(spans[i])
-        textSpans.append(" ".join([graph.nodes[nodeID]['token'].text for nodeID in graph.nodes if (nodeID in sorted(proper[i]) and graph.nodes[nodeID]['token'].deprel not in {"mark", "punct"})]))
-    return textSpans
+            span = spans[i] - proper[0]
+        elif spans[i] != []: #czy to działa?
+            span = spans[i]
+        if span:
+            proper.append(span)
+
+    proper = sorted(proper, key=min)
+    for span in proper:
+        textSpans.append(" ".join([graph.nodes[nodeID]['token'].text for nodeID in graph.nodes if nodeID in span]))
+    return textSpans, proper
+
+def check_continuity(my_list):
+    return all(a+1==b for a, b in zip(my_list, my_list[1:]))
+
+def findSplit(my_list):
+    splits = []
+    for a, b in zip(my_list, my_list[1:]):
+        if a+1!=b:
+            splits.append((a, b))
+    print(f"split {splits}")
+    return splits
 
 def main():
     with open("tekst.txt", "r", encoding='utf-8') as f: #usunąłem kropki przy skrótach al. i ul., oraz usunąłem spację przed jednym z wielokropków
@@ -189,27 +223,48 @@ def main():
     
     nlp_blank = spacy.blank("pl")
     combo = COMBO.from_pretrained("polish-herbert-base-ud213")
-
+    docs = []
     parsedText = combo(text)
     dependencyTrees = []
     for i, sentence in enumerate(parsedText):
+
         graph = sentence_to_graph(sentence)
         dependencyTrees.append(graph)
         governors = sorted(find_governors_from_graph(graph, None))
         #print(governors)
-        print([(item, graph.nodes[item]['token'].text) for item in governors])
-        print(f"zdanie {i}: {getSpans(graph, governors)}")
+        #print([(item, graph.nodes[item]['token'].text) for item in governors])
+        #print(f"zdanie {i}: {getSpans(graph, governors)}")
+        textSpans, tokenSpans = getSpans(graph, governors)
+        print(f"SPANS {textSpans}\n{tokenSpans}")
 
-        '''govs = find_governors(sentence.tokens, True, sentence.tokens)
+        words = [token.text for token in sentence.tokens]
+        doc = Doc(nlp_blank.vocab, words=words)
+        doc.spans["sc"] = []
+        for i, span in enumerate(tokenSpans):
+            if check_continuity(list(span)):
+                print("weszłem")
+                doc.spans["sc"].append(Span(doc, min(span)-1, max(span), f"{i+1}. człon"))
+            else:
+                splits = findSplit(list(span))
+                for split in splits:
+                    if split[1]-split[0] > 2 and not skip:
+                        doc.spans["sc"].append(Span(doc, min(span)-1, split[0], f"{i+1}. człon"))
+                        doc.spans["sc"].append(Span(doc, split[1]-1, max(span), f"{i+1}. człon"))
+                    else:
+                        doc.spans["sc"].append(Span(doc, min(span)-1, max(span), f"{i+1}. człon"))
+                        skip = True
+        print(f"DOC {doc}")
+        docs.append(doc)
+        print(f"DOCS {docs}")
+    
+    options = {"colors": {key: value for key, value 
+                    in zip([f"{i+1}. człon" for i in range(MAX_UNITS)], COLORS_NAMES)}}
+    spacy.displacy.serve(docs, style="span", options=options)
+
+    '''govs = find_governors(sentence.tokens, True, sentence.tokens)
         print([(gov, sentence.tokens[gov-1].text) for gov in govs])
         better = set([ids for ids in govs if sentence.tokens[ids-1].deprel in TAGS or sentence.tokens[ids-1].deprel in VERB_TAGS])
         print([(gov, sentence.tokens[gov-1].text) for gov in better])'''
-    
-
-        #nx.draw_networkx(graph,#.subgraph([1, 2, 3, 4, 5]),
-          #               with_labels=True, node_color='lightblue', edge_color='gray', arrows=True,
-         #                labels={token.idx:token.text for token in sentence.tokens})
-        #plt.show()
         
 
 if __name__== "__main__":
