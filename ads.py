@@ -11,9 +11,9 @@ import string
 
 TAGS = {'advcl', 'ccomp', 'csubj', 'parataxis:insert', 'parataxis:obj', 'acl:relcl', 'root'} # ccomp
 VERB_TAGS = {'conj', 'acl:relcl'}
-PUNCT = {",", ".", ";", ":", "-", '"'}
+PUNCT = {",", ".", ";", ":", "-", '"', "?", "!"}
 ABBREVIATIONS = {"np.", "itd.", "itp.", "dr.", "prof.", "ul.", "al.", "sz.", "tzw.", "reż.", "godz.", "min.",
-                 "str.", "cz.", "fot.",
+                 "str.", "cz.", "fot.", "art.", "lit.", "ust.", "in.",
                  *[f"{i}." for i in range(24)], *[f"{letter}." for letter in string.ascii_lowercase]}
 MAX_UNITS = 60
 COLORS_NAMES = ["turquoise", " lightcoral", "mediumorchid", 
@@ -77,7 +77,7 @@ def find_governors_from_graph(graph, subroot):
             governors.append(token.idx)
         elif token.upostag == "VERB" and token.deprel in VERB_TAGS:
             governors.append(token.idx)
-        elif token.upostag == "ADJ" and token.deprel in VERB_TAGS and graph.nodes[root]['token'].upostag != "ADJ":
+        elif token.upostag == "ADJ" and token.deprel in VERB_TAGS and graph.nodes[root]['token'].upostag not in {"ADJ", "NOUN"}:
             governors.append(token.idx)
         governors.extend(find_governors_from_graph(graph, successor))
     return governors
@@ -91,8 +91,8 @@ def sentence_to_graph(sentence):
         if token.head != 0:
             G.add_edge(token.head, token.idx, label=token.deprel)
     
-    #for node in G.nodes:
-     #   print(f"NODES: {node, G.nodes[node]['token'], G.nodes[node]['token'].deprel, G.nodes[node]['token'].head }")
+    for node in G.nodes:
+        print(f"NODES: {node, G.nodes[node]['token'], G.nodes[node]['token'].deprel, G.nodes[node]['token'].head, G.nodes[node]['token'].upostag }")
 
     return G
 
@@ -222,7 +222,7 @@ def main(folder):
      #       f.write(segmentFile(html.unescape(text), combo, nlp_blank))
 
     for file in os.listdir(dir):
-        #if file == b'2412.xmi':
+        #if file == b'46.xmi':
         print(os.path.splitext(file)[0].decode())
         cas = getFile(os.path.join(dir, file))        
         with open(f"segmented/{os.path.splitext(file)[0].decode()}.html", "w", encoding="utf-8") as f:
