@@ -7,11 +7,14 @@ import os
 import cassis
 import html
 import re
+import string
 
 TAGS = {'advcl', 'ccomp', 'csubj', 'parataxis:insert', 'parataxis:obj', 'acl:relcl', 'root'} # ccomp
 VERB_TAGS = {'conj', 'acl:relcl'}
-PUNCT =  {",", ".", ";", ":", "-", '"'}
-ABBREVIATIONS = {"np.", "itd.", "itp.", "dr.", "prof.", "ul.", "al.", "p.", "sz.", "tzw.", "reż.", "godz.", "min."}
+PUNCT = {",", ".", ";", ":", "-", '"'}
+ABBREVIATIONS = {"np.", "itd.", "itp.", "dr.", "prof.", "ul.", "al.", "sz.", "tzw.", "reż.", "godz.", "min.",
+                 "str.", "cz.", "fot.",
+                 *[f"{i}." for i in range(24)], *[f"{letter}." for letter in string.ascii_lowercase]}
 MAX_UNITS = 60
 COLORS_NAMES = ["turquoise", " lightcoral", "mediumorchid", 
                 "sandybrown", "palegreen", "deepskyblue",
@@ -119,11 +122,11 @@ def getSpans(graph, spanHeads):
 def check_continuity(my_list):
     return all(a+1==b for a, b in zip(my_list, my_list[1:]))
 
-def removeSingleTokens(my_list):
+def removeSingleTokens(my_list, sentence):
     new_list = []
     if len(my_list) > 2:
-        for el in my_list:
-            if not(el+1 not in my_list and el-1 not in my_list):
+        for i, el in enumerate(my_list):
+            if sentence.tokens[i].upostag not in {"punct", "mark"} or not(el+1 not in my_list and el-1 not in my_list):
                 new_list.append(el)
     else:
         new_list = my_list
@@ -152,10 +155,10 @@ def prepareDoc(parsedText, nlp):
         doc.spans["sc"] = []
 
         print(sentence)
-        #print(f"GOVS {governors}")
+        print(f"GOVS {governors}")
         for span in tokenSpans:
             span = sorted(list(span))
-            #print(f"SPAN {span}")
+            print(f"SPAN {span}")
             for i, gov in enumerate(governors):
                 if gov in span:
                     idx = i
@@ -164,17 +167,29 @@ def prepareDoc(parsedText, nlp):
                 span = [nodeID for nodeID in span if graph.nodes[nodeID]['token'].deprel not in {"mark", "cc"} and graph.nodes[nodeID]['token'].text not in PUNCT]
                 doc.spans["sc"].append(Span(doc, min(span)-1, max(span), f"{idx+1}. człon"))
             else:
-                span = removeSingleTokens(span)
+                span = removeSingleTokens(span, sentence)
+                print(f"afterremove: {span}")
                 if check_continuity(span):
+                    print(f"cont")
                     span = [nodeID for nodeID in span if graph.nodes[nodeID]['token'].deprel  not in {"mark", "cc"} and graph.nodes[nodeID]['token'].text not in PUNCT]
+                    print(span)
                     doc.spans["sc"].append(Span(doc, min(span)-1, max(span), f"{idx+1}. człon"))
                 else:
-                    span = [nodeID for nodeID in span if graph.nodes[nodeID]['token'].deprel  not in {"mark", "cc"}  and graph.nodes[nodeID]['token'].text not in PUNCT]
+                    print(f"not cont")
+                    span = [nodeID for nodeID in span if graph.nodes[nodeID]['token'].deprel not in {"mark"}  and graph.nodes[nodeID]['token'].text not in PUNCT]
                     splits = findSplit(span)
+                    print(span, splits)
                     if splits != []:
-                        for split in splits:
-                            doc.spans["sc"].append(Span(doc, min(span)-1, split[0], f"{idx+1}. człon"))
-                            doc.spans["sc"].append(Span(doc, split[1]-1, max(span), f"{idx+1}. człon"))
+                        for i in range(len(splits)):
+                            if i == 0:
+                                doc.spans["sc"].append(Span(doc, min(span)-1, splits[i][0], f"{idx+1}. człon"))
+                                if len(splits) == 1:
+                                    doc.spans["sc"].append(Span(doc, splits[i][1]-1, max(span), f"{idx+1}. człon"))
+                            elif i < len(splits)-1:
+                                doc.spans["sc"].append(Span(doc, splits[i-1][1]-1, splits[i][0], f"{idx+1}. człon"))
+                            else:
+                                doc.spans["sc"].append(Span(doc, splits[i-1][1]-1, splits[i][0], f"{idx+1}. człon"))
+                                doc.spans["sc"].append(Span(doc, splits[i][1]-1, max(span), f"{idx+1}. człon"))
                     else:
                         doc.spans["sc"].append(Span(doc, min(span)-1, max(span), f"{idx+1}. człon"))
         docs.append(doc)
@@ -207,11 +222,11 @@ def main(folder):
      #       f.write(segmentFile(html.unescape(text), combo, nlp_blank))
 
     for file in os.listdir(dir):
-        #if file == b'159.xmi':
+        #if file == b'2412.xmi':
         print(os.path.splitext(file)[0].decode())
         cas = getFile(os.path.join(dir, file))        
         with open(f"segmented/{os.path.splitext(file)[0].decode()}.html", "w", encoding="utf-8") as f:
             f.write(segmentFile(prepareString(html.unescape(cas.sofa_string)), combo, nlp_blank))
-           
+
 if __name__== "__main__":
     main("data/XMI_dev/dev")

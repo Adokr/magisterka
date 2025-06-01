@@ -78,9 +78,11 @@ def get_text(file):
     return text
 
 def main(text, model, nlp):
+    nlp = spacy.blank("pl")
+    model = COMBO.from_pretrained("polish-herbert-base-ud213")
     docs, options = run_segmentation(text, model, nlp)
-    #displacy.serve(docs, style="span", options=options)
+    displacy.serve(docs, style="span", options=options)
     return docs, options
 
 if __name__ == "__main__":
-    main(get_text(sys.argv[1]))
+    main(get_text(sys.argv[1]), None, None)
