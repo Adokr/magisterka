@@ -143,13 +143,19 @@ def findSplit(my_list):
 def prepareDoc(parsedText, nlp):
     docs = []
     dependencyTrees = []
-    for sentence in parsedText:
+
+    whichSentences = [0, -1]
+    if len(sys.argv) > 3:
+        whichSentences = [int(sys.argv[3]), int(sys.argv[3])+1]
+    print(whichSentences)
+    
+    for sentence in parsedText[whichSentences[0] : whichSentences[1]]:
         if len(sentence.tokens) < 2:
             print("############################################")
             continue
         graph = sentence_to_graph(sentence)
         dependencyTrees.append(graph)
-        governors = sorted(find_governors_from_graph(graph, None))
+        governors = find_governors_from_graph(graph, None) #if sorted then segmentes are numerated by the governors order
         tokenSpans = getSpans(graph, governors)
         words = [token.text for token in sentence.tokens]
         doc = Doc(nlp.vocab, words=words)
@@ -217,20 +223,28 @@ def main(folder):
     nlp_blank = spacy.blank("pl")
     combo = COMBO.from_pretrained("polish-herbert-base-ud213")
     dir = os.fsencode(os.path.join(folder, "XMI_dev/dev"))
-    #with open("tekst.txt", "r", encoding="utf-8") as f:
-     #      text = f.read()
-   # with open("out.html", "w", encoding="utf-8") as f:
-     #       f.write(segmentFile(html.unescape(text), combo, nlp_blank))
+   
+    onlyOneFile = False
+    if len(sys.argv) > 2:
+        onlyOneFile = True
+
     print(os.getcwd())
     outputDir = "../segmented/"
-    os.mkdir(outputDir)
+    if not os.path.isdir(outputDir):
+        os.mkdir(outputDir)
 
-    for file in os.listdir(dir):
-        #if file == b'46.xmi':
-        print(os.path.splitext(file)[0].decode())
+    if onlyOneFile:
+        file = os.fsencode(sys.argv[2])
         cas = getFile(os.path.join(dir, file), folder)        
         with open(f"{os.path.join(outputDir, os.path.splitext(file)[0].decode())}.html", "w", encoding="utf-8") as f:
             f.write(segmentFile(prepareString(html.unescape(cas.sofa_string)), combo, nlp_blank))
+    else:
+        for file in os.listdir(dir):
+            #if file == b'46.xmi':
+            print(os.path.splitext(file)[0].decode())
+            cas = getFile(os.path.join(dir, file), folder)        
+            with open(f"{os.path.join(outputDir, os.path.splitext(file)[0].decode())}.html", "w", encoding="utf-8") as f:
+                f.write(segmentFile(prepareString(html.unescape(cas.sofa_string)), combo, nlp_blank))
 
 if __name__== "__main__":
     main(sys.argv[1])   #"../data/XMI_dev/dev")
