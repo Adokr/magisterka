@@ -8,6 +8,7 @@ import cassis
 import html
 import re
 import string
+import sys
 
 TAGS = {'advcl', 'ccomp', 'csubj', 'parataxis:insert', 'parataxis:obj', 'acl:relcl', 'root'} # ccomp
 VERB_TAGS = {'conj', 'acl:relcl'}
@@ -204,8 +205,8 @@ def segmentFile(text, model, nlp):
     html = spacy.displacy.render(docs, style="span", options=options)  # or style="ent" for NER
     return html
 
-def getFile(filePath):
-    with open("data/TypeSystem.xml", "rb") as f:
+def getFile(filePath, folder):
+    with open(os.path.join(folder, "TypeSystem.xml"), "rb") as f:
         typesystem = cassis.load_typesystem(f)
 
     with open(filePath, "rb") as g:#"data/XMI_train/train/206.xmi"
@@ -215,18 +216,21 @@ def getFile(filePath):
 def main(folder):
     nlp_blank = spacy.blank("pl")
     combo = COMBO.from_pretrained("polish-herbert-base-ud213")
-    dir = os.fsencode(folder)
+    dir = os.fsencode(os.path.join(folder, "XMI_dev/dev"))
     #with open("tekst.txt", "r", encoding="utf-8") as f:
      #      text = f.read()
    # with open("out.html", "w", encoding="utf-8") as f:
      #       f.write(segmentFile(html.unescape(text), combo, nlp_blank))
+    print(os.getcwd())
+    outputDir = "../segmented/"
+    os.mkdir(outputDir)
 
     for file in os.listdir(dir):
         #if file == b'46.xmi':
         print(os.path.splitext(file)[0].decode())
-        cas = getFile(os.path.join(dir, file))        
-        with open(f"segmented/{os.path.splitext(file)[0].decode()}.html", "w", encoding="utf-8") as f:
+        cas = getFile(os.path.join(dir, file), folder)        
+        with open(f"{os.path.join(outputDir, os.path.splitext(file)[0].decode())}.html", "w", encoding="utf-8") as f:
             f.write(segmentFile(prepareString(html.unescape(cas.sofa_string)), combo, nlp_blank))
 
 if __name__== "__main__":
-    main("data/XMI_dev/dev")
+    main(sys.argv[1])   #"../data/XMI_dev/dev")
