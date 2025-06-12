@@ -57,11 +57,15 @@ def prepareString(text):
             skip = False
     
     finalText = []
-    for word in new.split():
+    for i, word in enumerate(new.split()):
         if word.lower() not in ABBREVIATIONS:
             finalText.append(word)
-        else:
+        elif new.split()[i+1].islower():
             finalText.append("".join(word)[:-1])
+        else:
+            print("LOL")
+            finalText.append(word)
+
     return " ".join(finalText)
 
 def find_governors_from_graph(graph, subroot):
@@ -91,7 +95,7 @@ def sentence_to_graph(sentence):
     for token in sentence.tokens:
         if token.head != 0:
             G.add_edge(token.head, token.idx, label=token.deprel)
-    
+    print("\n################################################")
     for node in G.nodes:
         print(f"NODES: {node, G.nodes[node]['token'], G.nodes[node]['token'].deprel, G.nodes[node]['token'].head, G.nodes[node]['token'].upostag }")
 
@@ -100,6 +104,7 @@ def sentence_to_graph(sentence):
 def getSpans(graph, spanHeads):
     spans = []
     properSpans = []
+    markers = []
     for head in spanHeads:
         span = nx.descendants(graph, head)
         span.add(head)
@@ -115,19 +120,43 @@ def getSpans(graph, spanHeads):
             properSpans.append(span)
     properSpans = sorted(properSpans, key=min)
     
+    toRemove = []
+    for span in spans:    
+        for token in span:
+            if graph.nodes[token]['token'].deprel == "mark":
+                if token > 1 and graph.nodes[token-1]['token'].deprel == "punct":
+                    markers.append([token-1, token])
+                    toRemove.extend([token-1, token])
+                else:
+                    markers.append([token])
+                    toRemove.append(token)
+            elif graph.nodes[token]['token'].deprel == "cc":
+                if not ((graph.nodes[token]['token'].head in span) and (graph.nodes[graph.nodes[token]['token'].head]['token'].head in span)):
+                    if token > 1 and graph.nodes[token-1]['token'].deprel == "punct":
+                        markers.append([token-1, token])
+                        toRemove.extend([token-1, token])
+                    else:
+                        markers.append([token])
+                        toRemove.append(token)
+                
+    for el in toRemove:
+        for span in spans:
+            if el in span:
+                span.remove(el)
+
     #textSpans = []
     #for span in properSpans:
      #   textSpans.append(" ".join([graph.nodes[nodeID]['token'].text for nodeID in graph.nodes if nodeID in span]))
-    return properSpans
+    return properSpans, markers
 
 def check_continuity(my_list):
     return all(a+1==b for a, b in zip(my_list, my_list[1:]))
 
-def removeSingleTokens(my_list, sentence):
+def removeSingleTokens(my_list, sentenceTokens):
     new_list = []
     if len(my_list) > 2:
         for i, el in enumerate(my_list):
-            if sentence.tokens[i].upostag not in {"punct", "mark"} or not(el+1 not in my_list and el-1 not in my_list):
+            if sentenceTokens[i].upostag not in {"punct", "mark"} or not(el+1 not in my_list and el-1 not in my_list):
                 new_list.append(el)
     else:
         new_list = my_list
@@ -156,49 +185,83 @@ def prepareDoc(parsedText, nlp):
         graph = sentence_to_graph(sentence)
         dependencyTrees.append(graph)
         governors = find_governors_from_graph(graph, None) #if sorted then segmentes are numerated by the governors order
-        tokenSpans = getSpans(graph, governors)
+        tokenSpans, discourseMarkers = getSpans(graph, governors)
         words = [token.text for token in sentence.tokens]
         doc = Doc(nlp.vocab, words=words)
         doc.spans["sc"] = []
 
         print(sentence)
         print(f"GOVS {governors}")
-        for span in tokenSpans:
-            span = sorted(list(span))
-            print(f"SPAN {span}")
+        print(f"MARKER {discourseMarkers}")
+        for markerGroup in discourseMarkers:
+            doc.spans["sc"].append(Span(doc, min(markerGroup)-1, max(markerGroup), f"DM"))
+
+        for preSpan in tokenSpans:
+            preSpan = list(preSpan)
+            span = []
+            discourseMarkers = []
+            punctuation = []
+            
+            #add period to the last segment
+            if (len(graph)-1) in preSpan:
+                if len(graph) not in preSpan:
+                    preSpan.append(len(graph))
+            elif len(graph) in preSpan:
+                preSpan.remove(len(graph))
+
+            if graph.nodes[1]['token'].upostag == "PUNCT":
+                if 1 in preSpan and 2 not in preSpan:
+                        preSpan.remove(1)
+                        print("usun")
+                if 1 not in preSpan and 2 in preSpan:
+                    preSpan.append(1)
+                    print("dodaj")
+            
+            preSpan = sorted(preSpan)
+            print(f"SPAN {preSpan}")
+
+
             for i, gov in enumerate(governors):
-                if gov in span:
+                if gov in preSpan:
                     idx = i
                     break
-            if check_continuity(span):
-                span = [nodeID for nodeID in span if graph.nodes[nodeID]['token'].deprel not in {"mark", "cc"} and graph.nodes[nodeID]['token'].text not in PUNCT]
+            if check_continuity(preSpan):
+                #for nodeID in preSpan:
+                 #   if graph.nodes[nodeID]['token'] not in {'mark', 'cc'} and graph.nodes[nodeID]['token'].text not in PUNCT:
+                  #      span.append(nodeID)
+                   # elif graph.nodes[nodeID]['token'] in {'mark', 'cc'}:
+                    #    discourseMarkers.append(nodeID)
+                    #else:
+                     #   punctuation.append(nodeID)
+
+                span = [nodeID for nodeID in preSpan] #if graph.nodes[nodeID]['token'].deprel not in {"mark", "cc"}] #and graph.nodes[nodeID]['token'].text not in PUNCT]
                 doc.spans["sc"].append(Span(doc, min(span)-1, max(span), f"{idx+1}. człon"))
             else:
-                span = removeSingleTokens(span, sentence)
-                print(f"afterremove: {span}")
-                if check_continuity(span):
+                preSpan = removeSingleTokens(preSpan, sentence.tokens[:-1])#[:-1] żeby kropki nie brać
+                print(f"afterremove: {preSpan}")
+                if check_continuity(preSpan):
                     print(f"cont")
-                    span = [nodeID for nodeID in span if graph.nodes[nodeID]['token'].deprel  not in {"mark", "cc"} and graph.nodes[nodeID]['token'].text not in PUNCT]
-                    print(span)
-                    doc.spans["sc"].append(Span(doc, min(span)-1, max(span), f"{idx+1}. człon"))
+                    preSpan = [nodeID for nodeID in preSpan if graph.nodes[nodeID]['token'].deprel  not in {"mark", "cc"}]# and graph.nodes[nodeID]['token'].text not in PUNCT]
+                    print(preSpan)
+                    doc.spans["sc"].append(Span(doc, min(preSpan)-1, max(preSpan), f"{idx+1}. człon"))
                 else:
                     print(f"not cont")
-                    span = [nodeID for nodeID in span if graph.nodes[nodeID]['token'].deprel not in {"mark"}  and graph.nodes[nodeID]['token'].text not in PUNCT]
-                    splits = findSplit(span)
-                    print(span, splits)
+                    preSpan = [nodeID for nodeID in preSpan if graph.nodes[nodeID]['token'].deprel not in {"mark"}]#  and graph.nodes[nodeID]['token'].text not in PUNCT]
+                    splits = findSplit(preSpan)
+                    print(preSpan, splits)
                     if splits != []:
                         for i in range(len(splits)):
                             if i == 0:
-                                doc.spans["sc"].append(Span(doc, min(span)-1, splits[i][0], f"{idx+1}. człon"))
+                                doc.spans["sc"].append(Span(doc, min(preSpan)-1, splits[i][0], f"{idx+1}. człon"))
                                 if len(splits) == 1:
-                                    doc.spans["sc"].append(Span(doc, splits[i][1]-1, max(span), f"{idx+1}. człon"))
+                                    doc.spans["sc"].append(Span(doc, splits[i][1]-1, max(preSpan), f"{idx+1}. człon"))
                             elif i < len(splits)-1:
                                 doc.spans["sc"].append(Span(doc, splits[i-1][1]-1, splits[i][0], f"{idx+1}. człon"))
                             else:
                                 doc.spans["sc"].append(Span(doc, splits[i-1][1]-1, splits[i][0], f"{idx+1}. człon"))
-                                doc.spans["sc"].append(Span(doc, splits[i][1]-1, max(span), f"{idx+1}. człon"))
+                                doc.spans["sc"].append(Span(doc, splits[i][1]-1, max(preSpan), f"{idx+1}. człon"))
                     else:
-                        doc.spans["sc"].append(Span(doc, min(span)-1, max(span), f"{idx+1}. człon"))
+                        doc.spans["sc"].append(Span(doc, min(preSpan)-1, max(preSpan), f"{idx+1}. człon"))
         docs.append(doc)
     return docs
 
@@ -208,6 +271,7 @@ def segmentFile(text, model, nlp):
     
     options = {"colors": {key: value for key, value 
                     in zip([f"{i+1}. człon" for i in range(MAX_UNITS)], COLORS_NAMES)}}
+    options["colors"]["DM"] = "red"
     html = spacy.displacy.render(docs, style="span", options=options)  # or style="ent" for NER
     return html
 
