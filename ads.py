@@ -10,12 +10,15 @@ import re
 import string
 import sys
 
-TAGS = {'advcl', 'ccomp', 'csubj', 'parataxis:insert', 'parataxis:obj', 'acl:relcl', 'root'} # ccomp
-VERB_TAGS = {'conj', 'acl:relcl'}
+TAGS = {'ccomp', 'csubj', 'parataxis:insert', 'parataxis:obj', 'acl:relcl', 'root'} # ccomp
+VERB_TAGS = {'conj', 'acl:relcl', 'advcl', 'ccomp:obj', 'ccomp:cleft'}
 PUNCT = {",", ".", ";", ":", "-", '"', "?", "!"}
 ABBREVIATIONS = {"np.", "itd.", "itp.", "dr.", "prof.", "ul.", "al.", "sz.", "tzw.", "reż.", "godz.", "min.",
                  "str.", "cz.", "fot.", "art.", "lit.", "ust.", "in.",
                  *[f"{i}." for i in range(24)], *[f"{letter}." for letter in string.ascii_lowercase]}
+
+ABBREVIATIONS_WITH_NAME_AFTER = {"dr.", "reż.", "ul.", "al."}
+
 MAX_UNITS = 60
 COLORS_NAMES = ["turquoise", " lightcoral", "mediumorchid", 
                 "sandybrown", "palegreen", "deepskyblue",
@@ -37,8 +40,8 @@ def prepareString(text):
     
     cleaned_text = re.sub(r'\s*([,.?!\'])\s*', r'\1 ', text)
     cleaned_text = re.sub(r'(\.\s\.\s\.\s)', '... ', cleaned_text)
-    
-    new = ""
+    new = cleaned_text
+    '''new = ""
     skip = False
     quotationOpened = False
     for char in list(cleaned_text):
@@ -54,18 +57,19 @@ def prepareString(text):
         elif not skip:
             new += char
         else:
-            skip = False
+            skip = False'''
     
     finalText = []
     for i, word in enumerate(new.split()):
         if word.lower() not in ABBREVIATIONS:
             finalText.append(word)
-        elif new.split()[i+1].islower():
+        elif new.split()[i+1].islower() or new.split()[i+1].isnumeric() or word.lower() in ABBREVIATIONS_WITH_NAME_AFTER:
             finalText.append("".join(word)[:-1])
         else:
             print("LOL")
+            print(word)
             finalText.append(word)
-
+    print(f"TEXT: {' '.join(finalText)}")
     return " ".join(finalText)
 
 def find_governors_from_graph(graph, subroot):
@@ -84,8 +88,21 @@ def find_governors_from_graph(graph, subroot):
             governors.append(token.idx)
         elif token.upostag == "ADJ" and token.deprel in VERB_TAGS and graph.nodes[root]['token'].upostag not in {"ADJ", "NOUN"}:
             governors.append(token.idx)
+        elif token.upostag == "ADV" and token.deprel in {"advcl:relcl", "advcl"} and check_successors(graph, token, {"VERB"}, {"xcomp", "aux"}):
+            governors.append(token.idx)
+        elif token.upostag == "NOUN" and token.deprel == "advcl" and check_successors(graph, token, {"AUX"}, {"cop"}):
+            governors.append(token.idx)
         governors.extend(find_governors_from_graph(graph, successor))
     return governors
+
+def check_successors(graph, token, searchedUpostag, searchedDeprel):
+    foundToken = False
+    for successor in graph.successors(token.idx):
+        if graph.nodes[successor]['token'].upostag in searchedUpostag and graph.nodes[successor]['token'].deprel in searchedDeprel:
+            foundToken = graph.nodes[successor]
+            break
+    return foundToken
+
 
 def sentence_to_graph(sentence):
     G = nx.DiGraph()
