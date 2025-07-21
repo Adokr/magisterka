@@ -10,8 +10,8 @@ import re
 import string
 import sys
 
-TAGS = {'ccomp', 'csubj', 'parataxis:insert', 'parataxis:obj', 'acl:relcl', 'root'} # ccomp
-VERB_TAGS = {'conj', 'acl:relcl', 'advcl', 'ccomp:obj', 'ccomp:cleft'}
+TAGS = {'ccomp', 'acl:relcl', 'root'} # ccomp
+VERB_TAGS = {'conj', 'acl', 'acl:relcl', 'advcl', 'ccomp:obj', 'ccomp:cleft'}
 PUNCT = {",", ".", ";", ":", "-", '"', "?", "!"}
 ABBREVIATIONS = {"np.", "itd.", "itp.", "dr.", "prof.", "ul.", "al.", "sz.", "tzw.", "reż.", "godz.", "min.",
                  "str.", "cz.", "fot.", "art.", "lit.", "ust.", "in.",
@@ -66,15 +66,16 @@ def prepareString(text):
         elif new.split()[i+1].islower() or new.split()[i+1].isnumeric() or word.lower() in ABBREVIATIONS_WITH_NAME_AFTER:
             finalText.append("".join(word)[:-1])
         else:
-            print("LOL")
-            print(word)
+            #print("LOL")
+            #print(word)
             finalText.append(word)
-    print(f"TEXT: {' '.join(finalText)}")
+    #print(f"TEXT: {' '.join(finalText)}")
     return " ".join(finalText)
 
 def find_governors_from_graph(graph, subroot):
     if subroot == None:
-        root = [nodeID for nodeID in graph.nodes if graph.nodes[nodeID]['token'].deprel == 'root'][0]
+        root = graph
+        root = [node for node in graph if node[''].deprel == 'root'][0]
         governors = [root]
     else:
         root = subroot
@@ -90,7 +91,11 @@ def find_governors_from_graph(graph, subroot):
             governors.append(token.idx)
         elif token.upostag == "ADV" and token.deprel in {"advcl:relcl", "advcl"} and check_successors(graph, token, {"VERB"}, {"xcomp", "aux"}):
             governors.append(token.idx)
-        elif token.upostag == "NOUN" and token.deprel == "advcl" and check_successors(graph, token, {"AUX"}, {"cop"}):
+        elif token.upostag == "NOUN" and token.deprel == "obl":
+            governors.append(token.idx)
+        elif token.upostag == "NOUN" and token.deprel == "appos" and check_successors(graph, token, {"PUNCT"}, {"punct"}):
+            governors.append(token.idx)
+        elif token.upostag == "NUM" and token.deprel == "nummod" and check_successors(graph, token, {"PUNCT"}, {"punct"}):
             governors.append(token.idx)
         governors.extend(find_governors_from_graph(graph, successor))
     return governors
@@ -136,7 +141,9 @@ def getSpans(graph, spanHeads):
         if span:
             properSpans.append(span)
     properSpans = sorted(properSpans, key=min)
-    
+
+    '''
+    #WYDZIELANIE MARKERÓW DYSKURSU
     toRemove = []
     for span in spans:    
         for token in span:
@@ -159,11 +166,12 @@ def getSpans(graph, spanHeads):
     for el in toRemove:
         for span in spans:
             if el in span:
-                span.remove(el)
+                span.remove(el)'''
 
     #textSpans = []
     #for span in properSpans:
      #   textSpans.append(" ".join([graph.nodes[nodeID]['token'].text for nodeID in graph.nodes if nodeID in span]))
+    
     return properSpans, markers
 
 def check_continuity(my_list):
@@ -186,112 +194,64 @@ def findSplit(my_list):
             splits.append((a, b))
     return splits
 
-def prepareDoc(parsedText, nlp):
-    docs = []
-    dependencyTrees = []
+#def getSpan(span, elementToStart):
+    
+
+def prepareDoc(graph):
 
     whichSentences = [None, None]
     if len(sys.argv) > 3:
         whichSentences = [int(sys.argv[3]), int(sys.argv[3])+1]
     print(whichSentences)
     
-    for sentence in parsedText[whichSentences[0] : whichSentences[1]]:
-        #if len(sentence.tokens) < 2:
-        #    print("############################################")
-        #    continue
-        graph = sentence_to_graph(sentence)
-        dependencyTrees.append(graph)
+    if True:
         governors = find_governors_from_graph(graph, None) #if sorted then segmentes are numerated by the governors order
         tokenSpans, discourseMarkers = getSpans(graph, governors)
-        words = [token.text for token in sentence.tokens]
-        doc = Doc(nlp.vocab, words=words)
-        doc.spans["sc"] = []
+        properSpans = []
 
-        print(sentence)
-        print(f"GOVS {governors}")
-        print(f"MARKER {discourseMarkers}")
-        for markerGroup in discourseMarkers:
-            doc.spans["sc"].append(Span(doc, min(markerGroup)-1, max(markerGroup), f"DM"))
+        #print(sentence)
+        #print(f"GOVS {governors}")
+        #print(f"MARKER {discourseMarkers}")
+        #print(f"SPANS {tokenSpans}")
 
         for preSpan in tokenSpans:
-            preSpan = list(preSpan)
-            span = []
-            discourseMarkers = []
-            punctuation = []
-            
-            #add period to the last segment
-            if (len(graph)-1) in preSpan:
-                if len(graph) not in preSpan:
-                    preSpan.append(len(graph))
-            elif len(graph) in preSpan:
-                preSpan.remove(len(graph))
-
-            if graph.nodes[1]['token'].upostag == "PUNCT":
-                if 1 in preSpan and 2 not in preSpan:
-                        preSpan.remove(1)
-                        print("usun")
-                if 1 not in preSpan and 2 in preSpan:
-                    preSpan.append(1)
-                    print("dodaj")
-            
-            preSpan = sorted(preSpan)
-            print(f"SPAN {preSpan}")
-
-
-            for i, gov in enumerate(governors):
-                if gov in preSpan:
-                    idx = i
-                    break
+            preSpan = sorted(list(preSpan))
+            #print(f"\nPRESPAN {preSpan}")
             if check_continuity(preSpan):
-                #for nodeID in preSpan:
-                 #   if graph.nodes[nodeID]['token'] not in {'mark', 'cc'} and graph.nodes[nodeID]['token'].text not in PUNCT:
-                  #      span.append(nodeID)
-                   # elif graph.nodes[nodeID]['token'] in {'mark', 'cc'}:
-                    #    discourseMarkers.append(nodeID)
-                    #else:
-                     #   punctuation.append(nodeID)
-
-                span = [nodeID for nodeID in preSpan] #if graph.nodes[nodeID]['token'].deprel not in {"mark", "cc"}] #and graph.nodes[nodeID]['token'].text not in PUNCT]
-                if span != []:
-                    doc.spans["sc"].append(Span(doc, min(span)-1, max(span), f"{idx+1}. człon"))
+                properSpans.append(preSpan)
             else:
-                preSpan = removeSingleTokens(preSpan, sentence.tokens[:-1])#[:-1] żeby kropki nie brać
-                print(f"afterremove: {preSpan}")
-                if check_continuity(preSpan):
-                    print(f"cont")
-                    preSpan = [nodeID for nodeID in preSpan if graph.nodes[nodeID]['token'].deprel  not in {"mark", "cc"}]# and graph.nodes[nodeID]['token'].text not in PUNCT]
-                    print(preSpan)
-                    doc.spans["sc"].append(Span(doc, min(preSpan)-1, max(preSpan), f"{idx+1}. człon"))
-                else:
-                    print(f"not cont")
-                    preSpan = [nodeID for nodeID in preSpan if graph.nodes[nodeID]['token'].deprel not in {"mark"}]#  and graph.nodes[nodeID]['token'].text not in PUNCT]
-                    splits = findSplit(preSpan)
-                    print(preSpan, splits)
-                    if splits != []:
-                        for i in range(len(splits)):
-                            if i == 0:
-                                doc.spans["sc"].append(Span(doc, min(preSpan)-1, splits[i][0], f"{idx+1}. człon"))
-                                if len(splits) == 1:
-                                    doc.spans["sc"].append(Span(doc, splits[i][1]-1, max(preSpan), f"{idx+1}. człon"))
-                            elif i < len(splits)-1:
-                                doc.spans["sc"].append(Span(doc, splits[i-1][1]-1, splits[i][0], f"{idx+1}. człon"))
-                            else:
-                                doc.spans["sc"].append(Span(doc, splits[i-1][1]-1, splits[i][0], f"{idx+1}. człon"))
-                                doc.spans["sc"].append(Span(doc, splits[i][1]-1, max(preSpan), f"{idx+1}. człon"))
-                    else:
-                        doc.spans["sc"].append(Span(doc, min(preSpan)-1, max(preSpan), f"{idx+1}. człon"))
-        docs.append(doc)
-    return docs
+                splits = findSplit(preSpan)
+                #print(f"SPLITS {splits}")
+                if splits != []:    
+                    for i in range(len(splits)):
+                        if i == 0:
+                            properSpans.append(preSpan[0:preSpan.index(splits[i][0])+1])
+                            #properSpans.append(preSpan[splits[i][1]:])
+                            if len(splits) == 1:
+                                properSpans.append(preSpan[preSpan.index(splits[i][1]):])
+                        elif i < len(splits) - 1:
+                            properSpans.append(preSpan[preSpan.index(splits[i-1][1]):preSpan.index(splits[i][0])+1])
+                        else:
+                            properSpans.append(preSpan[preSpan.index(splits[i-1][1]):preSpan.index(splits[i][0])+1])
+                            properSpans.append(preSpan[preSpan.index(splits[i][1]):])
+                    #print(f"SPLITTED {properSpans}")
+       
+        if len(sentence.tokens) > 1 and [len(sentence.tokens)] in properSpans:
+            properSpans.remove([len(sentence.tokens)]) 
+        
+        print(f"PROPER {properSpans}")
+        span_beginnings = [span[0] for span in properSpans]
+
+
+
+        print(f"BEGINNINGS: {span_beginnings}")
+    return span_beginnings
 
 def segmentFile(text, model, nlp):
     parsedText = model(text)
-    docs = prepareDoc(parsedText, nlp)
-    
-    options = {"colors": {key: value for key, value 
-                    in zip([f"{i+1}. człon" for i in range(MAX_UNITS)], COLORS_NAMES)}}
-    options["colors"]["DM"] = "red"
-    html = spacy.displacy.render(docs, style="span", options=options)  # or style="ent" for NER
-    return html
+    du_beginnings = prepareDoc(parsedText, nlp)
+    #print(f"BEGINNINGS: {du_beginnings}")
+    return du_beginnings, parsedText
 
 def getFile(filePath, folder):
     with open(os.path.join(folder, "TypeSystem.xml"), "rb") as f:

@@ -4,6 +4,7 @@ import csv
 import re
 from combo.predict import COMBO
 import spacy
+import conll_to_dg as dg
 import os
 import pathlib 
 PATH ="C:\\Users\\Adam\\magisterka\\data"
@@ -65,6 +66,19 @@ def getData():
 
     return text, text_tab, tokenized_text, du_beginnings, sent_ids
 
+def getGraphFromConllu():
+    try:
+        conllu = open('C:\\Users\\Adam\\magisterka\\data\\ENG\\eng.erst.gum_dev.conllu', 'r', encoding="utf8")
+    except IOError:
+        print("The input conllu file not found")
+        sys.exit(1)
+    except IndexError:
+        print("python", sys.argv[0], "inputfile outputfile")
+        sys.exit(1)
+    
+    digraphs = dg.read_graph(conllu, 2)
+    return digraphs
+
 def prepareData(discourse_unit_start, text):
     #print(f"DU {discourse_unit_start}")
     #print(f"TOKENS: {text}")
@@ -90,25 +104,18 @@ def prepareData(discourse_unit_start, text):
     return beginnings
 
 def main():
+    graphs = getGraphFromConllu()
     text, text_tab, tokenized_text, du_beginnings, sent_ids = getData()
-    combo = COMBO.from_pretrained("english-bert-base-ud213")
-    nlp_blank = spacy.blank("en")
-
-    
 
     predicted_beginnings = []
     predicted_tokenization = []
     tokenization_proper =[]
     #print(text[76:77])
-    for i, sentence in enumerate(text):
-        if sentence.split(" ")[0:3] != ["#", "newdoc", "id"]:
-            print(i)
-            beginnings, tokenization = ads_en.segmentFile(sentence, combo, nlp_blank)
-            predicted_tokenization.append(tokenization)
-            predicted_beginnings.append(beginnings)
-        else:
-            predicted_tokenization.append(sentence)
-            predicted_beginnings.append([None])
+    for i, graph in enumerate(graphs):
+        
+        beginnings, tokenization = ads_en.prepareDoc(graph)
+        predicted_tokenization.append(tokenization)
+        predicted_beginnings.append(beginnings)
     
     #print(predicted_tokenization)
     beginning_proper = prepareData(predicted_beginnings, predicted_tokenization)
